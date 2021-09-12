@@ -18,6 +18,7 @@ struct InfoDetailData{
     lang: String,
     item_type: String,
     rank_type: String,
+    id: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -105,8 +106,8 @@ fn get_types(url:&str) -> Vec<TypesInnerData> {
 
 }
 
-fn get_api(url:&str, size: i32, page: i32, gacha_type: String) -> API<InfoData> {
-    let url = Url::parse_with_params(url, &[("size", size.to_string()), ("page", page.to_string()), ("gacha_type", gacha_type), ("lang", String::from("zh-cn"))]).unwrap();
+fn get_api(url:&str, size: i32, page: i32, gacha_type: String, end_id: String) -> API<InfoData> {
+    let url = Url::parse_with_params(url, &[("size", size.to_string()), ("page", page.to_string()), ("gacha_type", gacha_type), ("lang", String::from("zh-cn")), ("end_id", end_id)]).unwrap();
     let resp = reqwest::blocking::get(url).unwrap()
     .json::<API<InfoData>>().unwrap();
     check_result(&resp).unwrap();
@@ -116,17 +117,20 @@ fn get_api(url:&str, size: i32, page: i32, gacha_type: String) -> API<InfoData> 
 // 返回 页面列表<每页数据<数据>> 内外层都是逆序的
 fn get_details(url: &str, gacha_type: &str) -> Vec<Vec<InfoDetailData>> {
     let mut i = 1;
+    let mut end_id = "0".to_string();
     let mut ret: Vec<Vec<InfoDetailData>> = Vec::new();
     loop {
         print!("正在获取第{}页...", i);
-        let records = get_api(url, 20, i, gacha_type.to_string());
+        let records = get_api(url, 20, i, gacha_type.to_string(), end_id.clone());
         let details = records.data.unwrap();
         println!("OK");
         if details.list.is_empty() {
             break;
         }
-        ret.push(details.list);
         i += 1;
+        let last = details.list.last().unwrap();
+        end_id = last.id.clone();
+        ret.push(details.list);
     }
     ret
 }
